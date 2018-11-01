@@ -6,6 +6,24 @@ from math import inf
 
 Recipe = namedtuple('Recipe', ['name', 'check', 'effect', 'cost'])
 
+max_items = {  "wood": 4, \
+                "plank": 5, \
+                "stick": 8, \
+                "coal": 1, \
+                "cobble": 10, \
+                "ore": 8, \
+                "ingot": 8, \
+                "wooden_axe": 1, \
+                "wooden_pickaxe": 1, \
+                "stone_axe": 1, \
+                "stone_pickaxe": 1, \
+                "iron_axe": 1, \
+                "iron_pickaxe": 1, \
+                "furnace": 1, \
+                "bench": 1, \
+                "rail": 48, \
+                "cart": 1 }
+
 
 class State(OrderedDict):
     """ This class is a thin wrapper around an OrderedDict, which is simply a dictionary which keeps the order in
@@ -52,6 +70,9 @@ def make_checker(rule):
             for key in rule['Consumes']:
                 if state[key] < rule['Consumes'][key]:
                     return  False
+        for key in rule['Produces']:
+            if state[key] + rule['Produces'][key] > max_items[key]:
+                return False
 
         return True
 
@@ -121,31 +142,6 @@ def graph(state):
         if r.check(state):
             yield (r.name, r.effect(state), r.cost)
 
-
-def total_item_cost(state):
-    item_costs = {  "wood": 4, \
-                    "plank": 5, \
-                    "stick": 6, \
-                    "coal": 33, \
-                    "cobble": 33, \
-                    "ore": 52, \
-                    "ingot": 316, \
-                    "wooden_axe": 29, \
-                    "wooden_pickaxe": 29, \
-                    "stone_axe": 111, \
-                    "stone_pickaxe": 111, \
-                    "iron_axe": 960, \
-                    "iron_pickaxe": 960, \
-                    "furnace": 264, \
-                    "bench": 20, \
-                    "rail": 1902, \
-                    "cart": 1580 }
-    total_cost = 0
-    for item in state:
-        total_cost += item_costs[item] * state[item]
-
-    return total_cost
-
 def get_depth(state):
     item_depth = {  "wood": 0, \
                     "plank": 1, \
@@ -171,9 +167,33 @@ def get_depth(state):
             max_depth = item_depth[item]
     return max_depth
 
+def tier(state):
+    item_tier = {   "wood": 0, \
+                    "plank": 0, \
+                    "stick": 0, \
+                    "coal": 0, \
+                    "cobble": 1, \
+                    "ore": 2, \
+                    "ingot": 2, \
+                    "wooden_axe": 0, \
+                    "wooden_pickaxe": 0, \
+                    "stone_axe": 1, \
+                    "stone_pickaxe": 1, \
+                    "iron_axe": 2, \
+                    "iron_pickaxe": 2, \
+                    "furnace": 1, \
+                    "bench": 0, \
+                    "rail": 3, \
+                    "cart": 3 }
+    max_tier = 0
+    for item in state:
+        if item_tier[item] > max_tier:
+            max_tier = item_tier[item]
+    return max_tier
+
 def heuristic(curr, goal):
     # Implement your heuristic here!
-    items = {  "wood": 4, \
+    """items = {  "wood": 4, \
                 "plank": 5, \
                 "stick": 8, \
                 "coal": 1, \
@@ -192,8 +212,20 @@ def heuristic(curr, goal):
                 "cart": 1 }
     for item in curr:
         if curr[item] > items[item]:
-            return inf
-    return get_depth(goal) - get_depth(curr)
+            return inf"""
+
+    curr_tier = tier(curr)
+    val_items = 0
+    if curr_tier < tier(goal):
+        wanted_items = [    [], \
+                            ["wooden_pickaxe", "cobble"], \
+                            ["stone_pickaxe", "ore", "ingot"] \
+                            ["ingot"]]
+        for item in wanted_items[curr_tier + 1]:
+            if curr[item] > 0:
+                val_items += curr[item]
+
+    return 0 - val_items
     #return 0
 
 def search(graph, state, is_goal, limit, heuristic, goal):
