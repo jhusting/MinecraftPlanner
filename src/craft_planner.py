@@ -105,7 +105,7 @@ def make_goal_checker(goal):
                 if key not in state_keys or state[key] != goal[key]:
                     return False"""
         for key in goal:
-            if state[key] <= goal[key]:
+            if state[key] < goal[key]:
                 return False
 
         return True
@@ -218,6 +218,12 @@ def search(graph, state, is_goal, limit, heuristic, goal):
     while time() - start_time < limit and len(pqueue) > 0 and not plan_found:
     #while len(pqueue) > 0 and not plan_found:
         estimation, keystate, name = heappop(pqueue)
+
+        if is_goal(keystate):
+            plan_found = True
+            last_state = keystate
+            break
+
         adj = graph(keystate)
 
         for action in adj:
@@ -232,12 +238,6 @@ def search(graph, state, is_goal, limit, heuristic, goal):
                 distances[new_state] = distances[keystate] + edge_cost
                 previous[new_state] = (keystate, name)
                 heappush(pqueue, (new_estimation, new_state, new_name))
-            if is_goal(new_state):
-                #print("new_state: ", new_state, "\ngoal: ", goal, "\nprev[new]: ", previous[new_state])
-                plan_found = True
-                last_state = new_state
-                #goal = new_state
-                break
     
     if plan_found is True:
         path = []
