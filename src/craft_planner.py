@@ -7,12 +7,12 @@ from math import inf
 Recipe = namedtuple('Recipe', ['name', 'check', 'effect', 'cost'])
 
 max_items = {  "wood": 4, \
-                "plank": 5, \
+                "plank": 4, \
                 "stick": 8, \
                 "coal": 1, \
-                "cobble": 10, \
-                "ore": 8, \
-                "ingot": 8, \
+                "cobble": 8, \
+                "ore": 6, \
+                "ingot": 6, \
                 "wooden_axe": 1, \
                 "wooden_pickaxe": 1, \
                 "stone_axe": 1, \
@@ -21,8 +21,25 @@ max_items = {  "wood": 4, \
                 "iron_pickaxe": 1, \
                 "furnace": 1, \
                 "bench": 1, \
-                "rail": 48, \
-                "cart": 1 }
+                "rail": 0, \
+                "cart": 0 }
+item_tier = {   "wood": 0, \
+                    "plank": 0, \
+                    "stick": 0, \
+                    "coal": 0, \
+                    "cobble": 1, \
+                    "ore": 2, \
+                    "ingot": 2, \
+                    "wooden_axe": 0, \
+                    "wooden_pickaxe": 0, \
+                    "stone_axe": 1, \
+                    "stone_pickaxe": 1, \
+                    "iron_axe": 2, \
+                    "iron_pickaxe": 2, \
+                    "furnace": 1, \
+                    "bench": 0, \
+                    "rail": 3, \
+                    "cart": 3 }
 
 
 class State(OrderedDict):
@@ -70,6 +87,7 @@ def make_checker(rule):
             for key in rule['Consumes']:
                 if state[key] < rule['Consumes'][key]:
                     return  False
+
         for key in rule['Produces']:
             if state[key] + rule['Produces'][key] > max_items[key]:
                 return False
@@ -168,24 +186,7 @@ def get_depth(state):
     return max_depth
 
 def tier(state):
-    item_tier = {   "wood": 0, \
-                    "plank": 0, \
-                    "stick": 0, \
-                    "coal": 0, \
-                    "cobble": 1, \
-                    "ore": 2, \
-                    "ingot": 2, \
-                    "wooden_axe": 0, \
-                    "wooden_pickaxe": 0, \
-                    "stone_axe": 1, \
-                    "stone_pickaxe": 1, \
-                    "iron_axe": 2, \
-                    "iron_pickaxe": 2, \
-                    "furnace": 1, \
-                    "bench": 0, \
-                    "rail": 3, \
-                    "cart": 3 }
-    max_tier = 0
+    max_tier = -1
     for item in state:
         if item_tier[item] > max_tier:
             max_tier = item_tier[item]
@@ -214,19 +215,21 @@ def heuristic(curr, goal):
         if curr[item] > items[item]:
             return inf"""
 
-    curr_tier = tier(curr)
+    """curr_tier = tier(curr)
     val_items = 0
     if curr_tier < tier(goal):
         wanted_items = [    [], \
                             ["wooden_pickaxe", "cobble"], \
                             ["stone_pickaxe", "ore", "ingot"] \
                             ["ingot"]]
-        for item in wanted_items[curr_tier + 1]:
-            if curr[item] > 0:
+        for item in state:
+            if item in wanted_items[curr_tier + 1]:
                 val_items += curr[item]
+            else:
+                val_items -= curr[item]
 
-    return 0 - val_items
-    #return 0
+    return (0 - val_items)*0"""
+    return tier(goal) - tier(curr)
 
 def search(graph, state, is_goal, limit, heuristic, goal):
 
@@ -263,6 +266,7 @@ def search(graph, state, is_goal, limit, heuristic, goal):
             new_state = action[1]
             edge_cost = action[2]
             heur = heuristic(new_state, goal)
+            #print("attempted: ", new_name, "\nheur: ", heur)
             #print("prev state: ", keystate, "\nnew state: ", new_state, "\nheur: ", heur)
             new_estimation = distances[keystate] + edge_cost + heur
 
@@ -314,6 +318,11 @@ if __name__ == '__main__':
     # Create a function which checks for the goal
     is_goal = make_goal_checker(Crafting['Goal'])
     goal = State(Crafting['Goal'])
+
+    if 'rail' in goal:
+        max_items['rail'] = 32
+    if 'cart' in goal:
+        max_items['cart'] = goal['cart']
 
     # Initialize first state from initial inventory
     state = State({key: 0 for key in Crafting['Items']})
