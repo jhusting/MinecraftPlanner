@@ -1,5 +1,11 @@
 Name: Josh Husting (Solo)
 
+A planner that will output a plan to craft a given item from a given initial state. 
+To change the goal or initial state, edit the json with which items you'd like to add.
+
+Then, to run the file, simply type python craft_planner.py in the console
+
+
 For my planner I implemented two heuristics for use in A*:
 
 1. Max item value
