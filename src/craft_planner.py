@@ -45,12 +45,12 @@ def make_checker(rule):
         # Tip: Do something with rule['Consumes'] and rule['Requires'].
         if 'Requires' in rule:
             for key in rule['Requires']:
-                if key not in state or state[key] is False:
+                if state[key] < 1:
                     return False
 
         if 'Consumes' in rule:
             for key in rule['Consumes']:
-                if key not in state or state[key] < rule['Consumes'][key]:
+                if state[key] < rule['Consumes'][key]:
                     return  False
 
         return True
@@ -68,19 +68,21 @@ def make_effector(rule):
         # Tip: Do something with rule['Produces'] and rule['Consumes'].
         next_state = State(state)
         
-        if 'Requires' in rule:
+        if 'Produces' in rule:
             for key in rule['Produces']:
-                if key not in next_state:
+                """if key not in next_state:
                     next_state[key] = rule['Produces'][key]
                 else:
-                    next_state[key] += rule['Produces'][key]
+                    next_state[key] += rule['Produces'][key]"""
+                next_state[key] += rule['Produces'][key]
 
         if 'Consumes' in rule:
             for key in rule['Consumes']:
-                if key not in next_state:
+                """if key not in next_state:
                     next_state[key] = rule['Consumes'][key]
                 else:
-                    next_state[key] -= rule['Consumes'][key]
+                    next_state[key] -= rule['Consumes'][key]"""
+                next_state[key] -= rule['Consumes'][key]
 
         return next_state
 
@@ -93,7 +95,7 @@ def make_goal_checker(goal):
 
     def is_goal(state):
         # This code is used in the search process and may be called millions of times.
-        goal_keys = goal.keys()
+        """goal_keys = goal.keys()
         state_keys = state.keys()
 
         if len(goal_keys) != len(state_keys):
@@ -101,7 +103,10 @@ def make_goal_checker(goal):
         else:
             for key in goal_keys:
                 if key not in state_keys or state[key] != goal[key]:
-                    return False
+                    return False"""
+        for key in goal:
+            if state[key] <= goal[key]:
+                return False
 
         return True
 
@@ -124,26 +129,72 @@ def total_item_cost(state):
                     "coal": 33, \
                     "cobble": 33, \
                     "ore": 52, \
-                    "ingot": 80, \
+                    "ingot": 316, \
                     "wooden_axe": 29, \
                     "wooden_pickaxe": 29, \
-                    "stone_axe": 44, \
-                    "stone_pickaxe": 44, \
-                    "iron_axe": 50, \
-                    "iron_pickaxe": 50, \
-                    "furnace": 61, \
+                    "stone_axe": 111, \
+                    "stone_pickaxe": 111, \
+                    "iron_axe": 960, \
+                    "iron_pickaxe": 960, \
+                    "furnace": 264, \
                     "bench": 20, \
-                    "rail": 60, \
-                    "cart": 60 }
+                    "rail": 1902, \
+                    "cart": 1580 }
     total_cost = 0
     for item in state:
         total_cost += item_costs[item] * state[item]
 
     return total_cost
 
+def get_depth(state):
+    item_depth = {  "wood": 0, \
+                    "plank": 1, \
+                    "stick": 2, \
+                    "coal": 4, \
+                    "cobble": 4, \
+                    "ore": 6, \
+                    "ingot": 6, \
+                    "wooden_axe": 3, \
+                    "wooden_pickaxe": 3, \
+                    "stone_axe": 5, \
+                    "stone_pickaxe": 5, \
+                    "iron_axe": 7, \
+                    "iron_pickaxe": 7, \
+                    "furnace": 5, \
+                    "bench": 2, \
+                    "rail": 7, \
+                    "cart": 7 }
+
+    max_depth = 0
+    for item in state:
+        if state[item] > 0 and item_depth[item] > max_depth:
+            max_depth = item_depth[item]
+    return max_depth
+
 def heuristic(curr, goal):
     # Implement your heuristic here!
-    return total_item_cost(goal) - total_item_cost(curr)
+    items = {  "wood": 4, \
+                "plank": 5, \
+                "stick": 8, \
+                "coal": 1, \
+                "cobble": 10, \
+                "ore": 8, \
+                "ingot": 8, \
+                "wooden_axe": 1, \
+                "wooden_pickaxe": 1, \
+                "stone_axe": 1, \
+                "stone_pickaxe": 1, \
+                "iron_axe": 1, \
+                "iron_pickaxe": 1, \
+                "furnace": 1, \
+                "bench": 1, \
+                "rail": 48, \
+                "cart": 1 }
+    for item in curr:
+        if curr[item] > items[item]:
+            return inf
+    return get_depth(goal) - get_depth(curr)
+    #return 0
 
 def search(graph, state, is_goal, limit, heuristic, goal):
 
@@ -153,46 +204,52 @@ def search(graph, state, is_goal, limit, heuristic, goal):
     previous = {}
     pqueue = []
 
-    heappush(pqueue, ('initial', state, 0))
+    heappush(pqueue, (0, state, 'initial'))
     distances[state] = 0
     previous[state] = (-1, 'initial')
 
     plan_found = False
-    #goal = None
+    last_state = None
 
     # Implement your search here! Use your heuristic here!
     # When you find a path to the goal return a list of tuples [(state, action)]
     # representing the path. Each element (tuple) of the list represents a state
     # in the path and the action that took you to this state
     while time() - start_time < limit and len(pqueue) > 0 and not plan_found:
-        name, keystate, estimation = heappop(pqueue)
-
+    #while len(pqueue) > 0 and not plan_found:
+        estimation, keystate, name = heappop(pqueue)
         adj = graph(keystate)
 
         for action in adj:
-            name = action[0]
+            new_name = action[0]
             new_state = action[1]
             edge_cost = action[2]
             heur = heuristic(new_state, goal)
-            print("prev state: ", keystate, "\nnew state: ", new_state, "\nheur: ", heur)
+            #print("prev state: ", keystate, "\nnew state: ", new_state, "\nheur: ", heur)
             new_estimation = distances[keystate] + edge_cost + heur
 
             if new_state not in distances or new_estimation < distances[new_state] + heur:
                 distances[new_state] = distances[keystate] + edge_cost
                 previous[new_state] = (keystate, name)
-                heappush(pqueue, (name, new_state, new_estimation))
-            """elif new_estimation < distances[new_state] + heur:
-                distances[new_state] = distances[keystate] + edge_cost
-                previous[new_state] = (keystate, name)
-                heappush(pqueue, (name, new_state, new_estimation))"""
-
+                heappush(pqueue, (new_estimation, new_state, new_name))
             if is_goal(new_state):
-                plan_found = true
+                #print("new_state: ", new_state, "\ngoal: ", goal, "\nprev[new]: ", previous[new_state])
+                plan_found = True
+                last_state = new_state
                 #goal = new_state
                 break
     
     if plan_found is True:
-        print("Found plan")
+        path = []
+
+        print("Elapsed Time: ", time() - start_time)
+
+        curr_state = last_state
+        while curr_state != state:
+            path.insert(0, previous[curr_state])
+            curr_state = previous[curr_state][0]
+
+        return path
     # Failed to find a path
     print(time() - start_time, 'seconds.')
     print("Failed to find a path from", state, 'within time limit.')
@@ -224,7 +281,7 @@ if __name__ == '__main__':
 
     # Create a function which checks for the goal
     is_goal = make_goal_checker(Crafting['Goal'])
-    goal = State({key: 0 for key in Crafting['Goal']})
+    goal = State(Crafting['Goal'])
 
     # Initialize first state from initial inventory
     state = State({key: 0 for key in Crafting['Items']})
