@@ -1,0 +1,18 @@
+Name: Josh Husting (Solo)
+
+For my planner I implemented two heuristics for use in A*:
+
+1. Max item value
+
+The heuristic you recommended, where you only keep one of each pickaxe, bench, etc.
+
+However, I also extended this rule to other items, as you'll never need more than 8 sticks, 6 iron, 8 cobble, etc. 
+
+This heuristic gave me the best perfomance increase over everything I tried, however I didn't actually implement this in the heuristic function.
+Instead, I modified the graph function to only return actions that don't break my max item value. For instance, if an action were to cause me to have more than 8 sticks, I wouldn't add that to the adjacency list. 
+
+2. A "tier" checker
+
+This one is actually implemented in the heuristic function, and helps immensely. Basically, I check if an action causes the highest "tier" of the state to increase. For instance, the tier of wood is 0, whereas the tier of stone is 1, and iron is 2. If you go from only having tier 0 items, to having at least one tier 1 item, you have increased a tier. 
+
+An action that increases a tier returns 0 for the heuristic function, and an action that doesn't increase a tier returns 10. This results in A* prioritizing actions that increase a tier. 

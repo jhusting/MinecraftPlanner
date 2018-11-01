@@ -23,6 +23,7 @@ max_items = {  "wood": 4, \
                 "bench": 1, \
                 "rail": 0, \
                 "cart": 0 }
+
 item_tier = {   "wood": 0, \
                     "plank": 0, \
                     "stick": 0, \
@@ -109,18 +110,10 @@ def make_effector(rule):
         
         if 'Produces' in rule:
             for key in rule['Produces']:
-                """if key not in next_state:
-                    next_state[key] = rule['Produces'][key]
-                else:
-                    next_state[key] += rule['Produces'][key]"""
                 next_state[key] += rule['Produces'][key]
 
         if 'Consumes' in rule:
             for key in rule['Consumes']:
-                """if key not in next_state:
-                    next_state[key] = rule['Consumes'][key]
-                else:
-                    next_state[key] -= rule['Consumes'][key]"""
                 next_state[key] -= rule['Consumes'][key]
 
         return next_state
@@ -160,31 +153,6 @@ def graph(state):
         if r.check(state):
             yield (r.name, r.effect(state), r.cost)
 
-def get_depth(state):
-    item_depth = {  "wood": 0, \
-                    "plank": 1, \
-                    "stick": 2, \
-                    "coal": 4, \
-                    "cobble": 4, \
-                    "ore": 6, \
-                    "ingot": 6, \
-                    "wooden_axe": 3, \
-                    "wooden_pickaxe": 3, \
-                    "stone_axe": 5, \
-                    "stone_pickaxe": 5, \
-                    "iron_axe": 7, \
-                    "iron_pickaxe": 7, \
-                    "furnace": 5, \
-                    "bench": 2, \
-                    "rail": 7, \
-                    "cart": 7 }
-
-    max_depth = 0
-    for item in state:
-        if state[item] > 0 and item_depth[item] > max_depth:
-            max_depth = item_depth[item]
-    return max_depth
-
 def tier(state):
     max_tier = -1
     for item in state:
@@ -192,44 +160,12 @@ def tier(state):
             max_tier = item_tier[item]
     return max_tier
 
-def heuristic(curr, goal):
+def heuristic(prev, next):
     # Implement your heuristic here!
-    """items = {  "wood": 4, \
-                "plank": 5, \
-                "stick": 8, \
-                "coal": 1, \
-                "cobble": 10, \
-                "ore": 8, \
-                "ingot": 8, \
-                "wooden_axe": 1, \
-                "wooden_pickaxe": 1, \
-                "stone_axe": 1, \
-                "stone_pickaxe": 1, \
-                "iron_axe": 1, \
-                "iron_pickaxe": 1, \
-                "furnace": 1, \
-                "bench": 1, \
-                "rail": 48, \
-                "cart": 1 }
-    for item in curr:
-        if curr[item] > items[item]:
-            return inf"""
-
-    """curr_tier = tier(curr)
-    val_items = 0
-    if curr_tier < tier(goal):
-        wanted_items = [    [], \
-                            ["wooden_pickaxe", "cobble"], \
-                            ["stone_pickaxe", "ore", "ingot"] \
-                            ["ingot"]]
-        for item in state:
-            if item in wanted_items[curr_tier + 1]:
-                val_items += curr[item]
-            else:
-                val_items -= curr[item]
-
-    return (0 - val_items)*0"""
-    return tier(goal) - tier(curr)
+    if tier(prev) < tier(next):
+        return 0
+    else:
+        return 10
 
 def search(graph, state, is_goal, limit, heuristic, goal):
 
@@ -245,6 +181,7 @@ def search(graph, state, is_goal, limit, heuristic, goal):
 
     plan_found = False
     last_state = None
+    visited = 0
 
     # Implement your search here! Use your heuristic here!
     # When you find a path to the goal return a list of tuples [(state, action)]
@@ -256,6 +193,7 @@ def search(graph, state, is_goal, limit, heuristic, goal):
 
         if is_goal(keystate):
             plan_found = True
+            goal_action = name
             last_state = keystate
             break
 
@@ -271,25 +209,29 @@ def search(graph, state, is_goal, limit, heuristic, goal):
             new_estimation = distances[keystate] + edge_cost + heur
 
             if new_state not in distances or new_estimation < distances[new_state] + heur:
+                visited += 1
                 distances[new_state] = distances[keystate] + edge_cost
                 previous[new_state] = (keystate, name)
                 heappush(pqueue, (new_estimation, new_state, new_name))
     
     if plan_found is True:
-        path = []
+        path = [(last_state, goal_action)]
 
-        print("Elapsed Time: ", time() - start_time)
+        print("Elapsed Time: ", time() - start_time, "\nstates visited: ", visited)
+        cost = distances[last_state]
 
         curr_state = last_state
+        length = 0
+
         while curr_state != state:
+            length += 1
             path.insert(0, previous[curr_state])
             curr_state = previous[curr_state][0]
-
-        return path
+        return path, cost, length
     # Failed to find a path
     print(time() - start_time, 'seconds.')
     print("Failed to find a path from", state, 'within time limit.')
-    return None
+    return None, 0, 0
 
 if __name__ == '__main__':
     with open('Crafting.json') as f:
@@ -329,10 +271,12 @@ if __name__ == '__main__':
     state.update(Crafting['Initial'])
 
     # Search for a solution
-    resulting_plan = search(graph, state, is_goal, 30, heuristic, goal)
+    resulting_plan, cost, length = search(graph, state, is_goal, 30, heuristic, goal)
 
     if resulting_plan:
         # Print resulting plan
         for state, action in resulting_plan:
             print('\t',state)
             print(action)
+
+        print("cost: ", cost, "\nlength: ", length)
